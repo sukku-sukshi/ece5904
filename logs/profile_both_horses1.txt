@@ -1,0 +1,29 @@
+Namespace(weights=['yolov7.pt'], source='./inference/images/horses.jpg', img_size=640, conf_thres=0.25, iou_thres=0.45, device='', view_img=False, save_txt=False, save_conf=False, nosave=False, classes=None, agnostic_nms=False, augment=False, update=False, project='runs/detect', name='exp', exist_ok=False, no_trace=False)
+Fusing layers... 
+RepConv.fuse_repvgg_block
+RepConv.fuse_repvgg_block
+RepConv.fuse_repvgg_block
+ Convert model to Traced-model... 
+ traced_script_module saved! 
+ model is traced! 
+
+5 horses, Done. (25.3ms) Inference, (4.2ms) NMS
+ The image with the result is saved in: runs/detect/exp36/horses.jpg
+Done. (0.325s)
+-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ---------------------------------------------------------------------------  
+                                                   Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg       CPU Mem  Self CPU Mem      CUDA Mem  Self CUDA Mem    # of Calls  Source Location                                                              
+-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ---------------------------------------------------------------------------  
+                               aten::mkldnn_convolution        23.22%        1.655s        23.35%        1.665s       6.234ms       0.000us         0.00%       0.000us       0.000us     969.14 Mb           0 b           0 b           0 b           267                                                                               
+                                                                                                                                                                                                                                                                                                                                          
+                                        cudaMemcpyAsync        23.15%        1.650s        23.15%        1.650s       1.024ms       2.169ms         1.63%       2.169ms       1.346us           0 b           0 b           0 b           0 b          1612                                                                               
+                                                                                                                                                                                                                                                                                                                                          
+                               aten::mkldnn_convolution        12.87%     917.207ms        12.91%     920.396ms       5.171ms       0.000us         0.00%       0.000us       0.000us     646.09 Mb           0 b           0 b           0 b           178  ...t_gpu/lib/python3.9/site-packages/torch/nn/modules/conv.py(459): forward  
+                                                                                                                                                                                                                                                                                                                                          
+                                               cudaFree         8.27%     589.544ms         8.27%     589.544ms     147.386ms       0.000us         0.00%       0.000us       0.000us           0 b           0 b           0 b           0 b             4                                                                               
+                                                                                                                                                                                                                                                                                                                                          
+                                       cudaLaunchKernel         7.24%     516.393ms         7.24%     516.393ms     109.941us       7.610ms         5.73%       7.610ms       1.620us           0 b           0 b           0 b           0 b          4697                                                                               
+                                                                                                                                                                                                                                                                                                                                          
+-------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ---------------------------------------------------------------------------  
+Self CPU time total: 7.128s
+Self CUDA time total: 132.856ms
+
