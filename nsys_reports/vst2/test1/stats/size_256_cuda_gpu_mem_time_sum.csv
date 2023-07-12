@@ -1,0 +1,5 @@
+Time (%),Total Time (ns),Count,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Operation
+52.4,56671372,2039,27793.7,768.0,703,2862564,129512.9,[CUDA memcpy HtoD]
+42.7,46139691,7924,5822.8,1504.0,1471,5512842,87378.5,[CUDA memcpy DtoH]
+3.0,3209088,3973,807.7,768.0,735,2400,152.0,[CUDA memset]
+2.0,2154143,631,3413.9,1824.0,1440,51104,4430.1,[CUDA memcpy DtoD]

@@ -1,0 +1,6 @@
+[submodule "yolov7"]
+	path = yolov7
+	url = git@github.com:nalostta/yolov7.git
+[submodule "ultralytics"]
+	path = ultralytics
+	url = git@github.com:nalostta/ultralytics.git
