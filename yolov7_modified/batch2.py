@@ -1,10 +1,12 @@
 import argparse
 import time
 from pathlib import Path
+
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
 from numpy import random
+
 from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages
 from utils.general import check_img_size, check_requirements, check_imshow, non_max_suppression, apply_classifier, \
@@ -12,29 +14,11 @@ from utils.general import check_img_size, check_requirements, check_imshow, non_
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
-import pynvml as pyn
-from pynvml.smi import nvidia_smi
-from threading import Thread
-import time
-
-code_section = 'none'
-nvs = nvidia_smi.getInstance()
-gpu = pyn.nvmlDeviceGetHandleByIndex(0)
-logger_locked = False
-
 def detect(opt, save_img=False):
-    source, weights, view_img, save_txt, imgsz, trace, log_file = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace, opt.log_file
+    source, weights, view_img, save_txt, imgsz, trace = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace
     save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
         ('rtsp://', 'rtmp://', 'http://', 'https://'))
-
-    monitor = Monitor(0.180, log_file) #180 ms min=167ms
-    #Profiling Init
-    global code_section
-    global logger_locked
-
-    code_section='Init: load model, bb setup, data_loader, etc'
-    ##monitor.log()
     # Directories
     save_dir = Path(increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok))  # increment run
     (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
@@ -80,14 +64,8 @@ def detect(opt, save_img=False):
     old_img_w = old_img_h = imgsz
     old_img_b = 1
 
-    code_section = 'Start: Begin processing frames.'
-    ##monitor.log()
-  
     t0 = time.time()
     for path, img, im0s, vid_cap in dataset:
-        code_section = '[frame]: pre-process, warm-up'
-        #monitor.log()
- 
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
         img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -102,31 +80,21 @@ def detect(opt, save_img=False):
                 model(img, augment=opt.augment)[0]
 
         # Inference
-        code_section = '[frame]: Inference'
-        #monitor.log()
-
         t1 = time_synchronized()
         with torch.no_grad():                           # Calculating gradients would cause a GPU memory leak
             pred = model(img, augment=opt.augment)[0]
         t2 = time_synchronized()
 
         # Apply NMS
-        code_section = '[frame]: NMS'
-        #monitor.log()
-
         pred = non_max_suppression(pred, opt.conf_thres, opt.iou_thres, classes=opt.classes, agnostic=opt.agnostic_nms)
         t3 = time_synchronized()
 
         # Apply Classifier
         if classify:
-            code_section = '[frame]: classify'
-            #monitor.log()
-
             pred = apply_classifier(pred, modelc, img, im0s)
 
-        code_section = '[frame]: post-process'
-        ##monitor.log()
-
+#def detect():
+        # Process detections
         for i, det in enumerate(pred):  # detections per image
             if webcam:  # batch_size >= 1
                 p, s, im0, frame = path[i], '%g: ' % i, im0s[i].copy(), dataset.count
@@ -184,91 +152,9 @@ def detect(opt, save_img=False):
                             fps, w, h = 30, im0.shape[1], im0.shape[0]
                             save_path += '.mp4'
                         vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-                    vid_writer.write(im0) 
-         
-    code_section = 'done: save outputs'
-    ##monitor.log()
-     
+                    vid_writer.write(im0)        
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         #print(f"Results saved to {save_dir}{s}")
-    monitor.stop()
+
     print(f'Done. ({time.time() - t0:.3f}s)')
-
-class Monitor(Thread):
-    def __init__(self, delay, log_file):
-        super(Monitor, self).__init__()
-        self.stopped = False
-        self.delay = delay # Time between calls to GPUtil
-        self.start()
-        self.log_file = log_file
-        self.start_time=time.time()
-        self.report = []
-        self.report.append([
-                "time",
-                "code-section",
-                "gpu-utilization",
-                "memory-utilization",
-                "PCIE-throughput",
-                "power-usage",
-                "energy-usage",
-                "temperature"
-                ])
-
-    def log(self):
-        global logger_locked
-        if not logger_locked:
-            logger_locked=True
-            ut=pyn.nvmlDeviceGetUtilizationRates(gpu)
-            #pyn.nvmlDeviceGetMemoryInfo(gpu)
-            thru=pyn.nvmlDeviceGetPcieThroughput(gpu, pyn.NVML_PCIE_UTIL_COUNT)
-            powu=pyn.nvmlDeviceGetPowerUsage(gpu)
-            engy=pyn.nvmlDeviceGetTotalEnergyConsumption(gpu)
-            temp=pyn.nvmlDeviceGetTemperature(gpu, pyn.NVML_TEMPERATURE_GPU)
-            now = time.time()
-            self.report.append([
-                str(now-self.start_time),
-                str(code_section),
-                str(ut.gpu),
-                str(ut.memory),
-                str(thru),
-                str(powu),
-                str(engy),
-                str(temp)
-                ])
-            logger_locked=False
-
-
-    def run(self):
-        global logger_locked
-        while not self.stopped:
-            # code here
-            if not logger_locked:
-                logger_locked=True
-                ut=pyn.nvmlDeviceGetUtilizationRates(gpu)
-                #pyn.nvmlDeviceGetMemoryInfo(gpu)
-                thru=pyn.nvmlDeviceGetPcieThroughput(gpu, pyn.NVML_PCIE_UTIL_COUNT)
-                powu=pyn.nvmlDeviceGetPowerUsage(gpu)
-                engy=pyn.nvmlDeviceGetTotalEnergyConsumption(gpu)
-                temp=pyn.nvmlDeviceGetTemperature(gpu, pyn.NVML_TEMPERATURE_GPU)
-                now = time.time()
-                self.report.append([
-                    str(now-self.start_time),
-                    str(code_section),
-                    str(ut.gpu),
-                    str(ut.memory),
-                    str(thru),
-                    str(powu),
-                    str(engy),
-                    str(temp)
-                    ])
-                logger_locked=False
-            time.sleep(self.delay)
-
-    def stop(self):
-        import csv
-        with open(self.log_file, 'w') as f:
-            wr = csv.writer(f)
-            wr.writerows(self.report)
-        self.stopped = True
-        
